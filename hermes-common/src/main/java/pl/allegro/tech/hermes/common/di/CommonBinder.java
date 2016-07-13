@@ -92,5 +92,6 @@ public class CommonBinder extends AbstractBinder {
 
         bind(ZookeeperInternalNotificationBus.class).to(InternalNotificationsBus.class);
         bindSingletonFactory(ModelAwareZookeeperNotifyingCacheFactory.class);
+        bindSingletonFactory(OAuthProviderRepositoryFactory.class);
     }
 }

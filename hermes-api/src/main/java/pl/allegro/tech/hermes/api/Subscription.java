@@ -66,6 +66,9 @@ public class Subscription {
 
     private EndpointAddressResolverMetadata endpointAddressResolverMetadata;
 
+    @Valid
+    private SubscriptionOAuthPolicy subscriptionOAuthPolicy;
+
     public enum State {
         PENDING, ACTIVE, SUSPENDED
     }
@@ -85,7 +88,8 @@ public class Subscription {
                          List<MessageFilterSpecification> filters,
                          SubscriptionMode mode,
                          List<Header> headers,
-                         EndpointAddressResolverMetadata endpointAddressResolverMetadata) {
+                         EndpointAddressResolverMetadata endpointAddressResolverMetadata,
+                         SubscriptionOAuthPolicy subscriptionOAuthPolicy) {
         this.topicName = topicName;
         this.name = name;
         this.endpoint = endpoint;
@@ -104,6 +108,7 @@ public class Subscription {
         this.subscriptionName = new SubscriptionName(name, topicName);
         this.headers = headers;
         this.endpointAddressResolverMetadata = endpointAddressResolverMetadata;
+        this.subscriptionOAuthPolicy = subscriptionOAuthPolicy;
     }
 
     public static Subscription createSerialSubscription(TopicName topicName,
@@ -120,9 +125,11 @@ public class Subscription {
                                                         List<MessageFilterSpecification> filters,
                                                         SubscriptionMode mode,
                                                         List<Header> headers,
-                                                        EndpointAddressResolverMetadata endpointAddressResolverMetadata) {
+                                                        EndpointAddressResolverMetadata endpointAddressResolverMetadata,
+                                                        SubscriptionOAuthPolicy subscriptionOAuthPolicy) {
         return new Subscription(topicName, name, endpoint, state, description, subscriptionPolicy, trackingEnabled, supportTeam,
-                contact, monitoringDetails, contentType, DeliveryType.SERIAL, filters, mode, headers, endpointAddressResolverMetadata);
+                contact, monitoringDetails, contentType, DeliveryType.SERIAL, filters, mode, headers,
+                endpointAddressResolverMetadata, subscriptionOAuthPolicy);
     }
 
     public static Subscription createBatchSubscription(TopicName topicName,
@@ -138,10 +145,11 @@ public class Subscription {
                                                        ContentType contentType,
                                                        List<MessageFilterSpecification> filters,
                                                        List<Header> headers,
-                                                       EndpointAddressResolverMetadata endpointAddressResolverMetadata) {
+                                                       EndpointAddressResolverMetadata endpointAddressResolverMetadata,
+                                                       SubscriptionOAuthPolicy subscriptionOAuthPolicy) {
         return new Subscription(topicName, name, endpoint, state, description, subscriptionPolicy, trackingEnabled, supportTeam,
                 contact, monitoringDetails, contentType, DeliveryType.BATCH, filters, SubscriptionMode.ANYCAST, headers,
-                endpointAddressResolverMetadata);
+                endpointAddressResolverMetadata, subscriptionOAuthPolicy);
     }
 
     @JsonCreator
@@ -161,7 +169,8 @@ public class Subscription {
             @JsonProperty("filters") List<MessageFilterSpecification> filters,
             @JsonProperty("mode") SubscriptionMode mode,
             @JsonProperty("headers") List<Header> headers,
-            @JsonProperty("endpointAddressResolverMetadata") EndpointAddressResolverMetadata endpointAddressResolverMetadata) {
+            @JsonProperty("endpointAddressResolverMetadata") EndpointAddressResolverMetadata endpointAddressResolverMetadata,
+            @JsonProperty("resourceOwnerCredentialsGrantOAuthPolicy") SubscriptionOAuthPolicy subscriptionOAuthPolicy) {
 
         DeliveryType validDeliveryType = deliveryType == null ? DeliveryType.SERIAL : deliveryType;
         SubscriptionMode subscriptionMode = mode == null ? SubscriptionMode.ANYCAST : mode;
@@ -184,7 +193,8 @@ public class Subscription {
                 filters == null ? Collections.emptyList() : filters,
                 subscriptionMode,
                 headers == null ? Collections.emptyList() : headers,
-                endpointAddressResolverMetadata == null ? EndpointAddressResolverMetadata.empty() : endpointAddressResolverMetadata
+                endpointAddressResolverMetadata == null ? EndpointAddressResolverMetadata.empty() : endpointAddressResolverMetadata,
+                subscriptionOAuthPolicy
         );
     }
 
@@ -192,7 +202,7 @@ public class Subscription {
     public int hashCode() {
         return Objects.hash(endpoint, topicName, name, description, serialSubscriptionPolicy, batchSubscriptionPolicy,
                 trackingEnabled, supportTeam, contact, monitoringDetails, contentType, filters, mode, headers,
-                endpointAddressResolverMetadata);
+                endpointAddressResolverMetadata, subscriptionOAuthPolicy);
     }
 
     @Override
@@ -219,7 +229,8 @@ public class Subscription {
                 && Objects.equals(this.filters, other.filters)
                 && Objects.equals(this.mode, other.mode)
                 && Objects.equals(this.headers, other.headers)
-                && Objects.equals(this.endpointAddressResolverMetadata, other.endpointAddressResolverMetadata);
+                && Objects.equals(this.endpointAddressResolverMetadata, other.endpointAddressResolverMetadata)
+                && Objects.equals(this.subscriptionOAuthPolicy, other.subscriptionOAuthPolicy);
     }
 
     @JsonIgnore
@@ -326,6 +337,10 @@ public class Subscription {
         return mode;
     }
 
+    public SubscriptionOAuthPolicy getSubscriptionOAuthPolicy() {
+        return subscriptionOAuthPolicy;
+    }
+
     public Subscription anonymizePassword() {
         if (getEndpoint().containsCredentials()) {
             return new Subscription(
@@ -344,7 +359,8 @@ public class Subscription {
                     filters,
                     mode,
                     headers,
-                    endpointAddressResolverMetadata
+                    endpointAddressResolverMetadata,
+                    subscriptionOAuthPolicy
             );
         }
         return this;

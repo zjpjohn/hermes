@@ -2,9 +2,12 @@ package pl.allegro.tech.hermes.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
+import pl.allegro.tech.hermes.api.helpers.Patch;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static pl.allegro.tech.hermes.api.PatchData.patchData;
+import static pl.allegro.tech.hermes.api.SubscriptionOAuthPolicy.GrantType.CLIENT_CREDENTIALS;
+import static pl.allegro.tech.hermes.api.SubscriptionOAuthPolicy.GrantType.RESOURCE_OWNER_USERNAME_PASSWORD;
 import static pl.allegro.tech.hermes.api.SubscriptionPolicy.Builder.subscriptionPolicy;
 import static pl.allegro.tech.hermes.test.helper.builder.SubscriptionBuilder.subscription;
 
@@ -77,4 +80,27 @@ public class SubscriptionTest {
         assertThat(subscription.anonymizePassword().getEndpoint()).isEqualTo(new EndpointAddress("http://user:*****@service/path"));
     }
 
+    @Test
+    public void shouldApplyPatchChangingSubscriptionOAuthPolicyGrantType() {
+        // given
+        Subscription subscription = subscription("group.topic", "subscription")
+                .withSubscriptionOAuthPolicy(new SubscriptionOAuthPolicy(CLIENT_CREDENTIALS, "myProvider", "repo", null, null))
+                .build();
+        PatchData subscriptionOAuthPolicyPatchData = patchData()
+                .set("grantType", "RESOURCE_OWNER_USERNAME_PASSWORD")
+                .set("username", "user1")
+                .set("password", "abc123")
+                .build();
+        PatchData patch = patchData()
+                .set("subscriptionOAuthPolicy", subscriptionOAuthPolicyPatchData)
+                .build();
+
+        // when
+        Subscription updated = Patch.apply(subscription, patch);
+
+        // then
+        SubscriptionOAuthPolicy updatedPolicy = updated.getSubscriptionOAuthPolicy();
+        assertThat(updatedPolicy.getGrantType()).isEqualTo(RESOURCE_OWNER_USERNAME_PASSWORD);
+        assertThat(updatedPolicy.getUsername()).isEqualTo("user1");
+    }
 }

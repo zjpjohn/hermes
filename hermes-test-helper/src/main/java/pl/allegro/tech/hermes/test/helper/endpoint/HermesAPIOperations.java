@@ -1,13 +1,6 @@
 package pl.allegro.tech.hermes.test.helper.endpoint;
 
-import pl.allegro.tech.hermes.api.BatchSubscriptionPolicy;
-import pl.allegro.tech.hermes.api.ContentType;
-import pl.allegro.tech.hermes.api.Group;
-import pl.allegro.tech.hermes.api.PatchData;
-import pl.allegro.tech.hermes.api.Subscription;
-import pl.allegro.tech.hermes.api.SubscriptionMode;
-import pl.allegro.tech.hermes.api.Topic;
-import pl.allegro.tech.hermes.api.TopicName;
+import pl.allegro.tech.hermes.api.*;
 import pl.allegro.tech.hermes.api.helpers.Patch;
 
 import javax.ws.rs.core.Response;
