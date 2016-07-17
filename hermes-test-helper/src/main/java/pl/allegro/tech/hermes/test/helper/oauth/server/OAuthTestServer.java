@@ -13,7 +13,7 @@ import pl.allegro.tech.hermes.test.helper.util.Ports;
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 
-class OAuthTestServer {
+public class OAuthTestServer {
 
     public static final String OAUTH2_TOKEN_ENDPOINT = "/oauth2/token";
     public static final String OAUTH2_RESOURCE_ENDPOINT = "/oauth2/resource";
@@ -80,6 +80,10 @@ class OAuthTestServer {
 
     public void clearStorage() {
         storage.clear();
+    }
+
+    public int getResourceAccessCount(String username) {
+        return storage.getResourceAccessCount(username);
     }
 
     public void start() {

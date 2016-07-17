@@ -156,4 +156,21 @@ class OAuthTestServerSpec extends Specification {
         then:
         response.responseCode == 401
     }
+
+    def "should count resource access count"() {
+        given:
+        authServer.registerClient("test_client", "abc")
+        authServer.registerResourceOwner("hermes", "hermes123")
+        def token = authServer.issueAccessToken("hermes")
+
+        when:
+        def resourceRequest = new OAuthBearerClientRequest(authServer.getResourceEndpoint("hermes"))
+                .setAccessToken(token)
+                .buildHeaderMessage()
+        authClient.resource(resourceRequest, "POST", OAuthResourceResponse.class)
+        authClient.resource(resourceRequest, "POST", OAuthResourceResponse.class)
+
+        then:
+        authServer.getResourceAccessCount("hermes") == 2
+    }
 }

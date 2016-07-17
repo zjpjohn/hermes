@@ -8,7 +8,7 @@ import org.apache.oltu.oauth2.rs.response.OAuthRSResponse;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-public class OAuthServletResponseUtils {
+class OAuthServletResponseUtils {
 
     static void sendResponse(HttpServletResponse resp, String body, int statusCode) throws IOException {
         resp.setStatus(statusCode);

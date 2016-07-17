@@ -35,6 +35,7 @@ class ResourceServlet extends HttpServlet {
 
             String username = req.getParameter("username");
             validateAccessToken(username, request.getAccessToken());
+            storage.incrementResourceAccessCount(username);
             sendResponse(resp, "this is the secret of " + username, 200);
         } catch (OAuthProblemException e) {
             OAuthResponse response = getOAuthJsonErrorResponse(e, HttpServletResponse.SC_UNAUTHORIZED);

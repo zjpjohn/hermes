@@ -8,6 +8,7 @@ import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class OAuthTestServerStorage {
 
@@ -15,12 +16,14 @@ class OAuthTestServerStorage {
     private final ConcurrentHashMap<String, String> clients;
     private final ConcurrentHashMap<String, String> owners;
     private final ConcurrentHashMap<String, List<String>> tokens;
+    private final ConcurrentHashMap<String, AtomicInteger> accessCount;
 
     OAuthTestServerStorage() {
         issuer = new OAuthIssuerImpl(new UUIDValueGenerator());
         clients = new ConcurrentHashMap<>();
         owners = new ConcurrentHashMap<>();
         tokens = new ConcurrentHashMap<>();
+        accessCount = new ConcurrentHashMap<>();
     }
 
     void addClient(String clientId, String clientSecret) {
@@ -70,5 +73,21 @@ class OAuthTestServerStorage {
         clients.clear();
         owners.clear();
         tokens.clear();
+        accessCount.clear();
+    }
+
+    public void incrementResourceAccessCount(String username) {
+        if (username == null) {
+            return;
+        }
+        if (accessCount.containsKey(username)) {
+            accessCount.get(username).incrementAndGet();
+        } else {
+            accessCount.putIfAbsent(username, new AtomicInteger(1));
+        }
+    }
+
+    public int getResourceAccessCount(String username) {
+        return accessCount.getOrDefault(username, new AtomicInteger(0)).get();
     }
 }

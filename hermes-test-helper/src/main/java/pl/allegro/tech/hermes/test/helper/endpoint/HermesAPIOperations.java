@@ -158,4 +158,13 @@ public class HermesAPIOperations {
 
         createSubscription(topic, subscription);
     }
+
+    public void createOAuthProvider(OAuthProvider oAuthProvider) {
+        if (endpoints.oAuthProvider().list().contains(oAuthProvider.getName())) {
+            return;
+        }
+        assertThat(endpoints.oAuthProvider().create(oAuthProvider).getStatus()).isEqualTo(CREATED.getStatusCode());
+
+        wait.untilOAuthProviderCreated(oAuthProvider.getName());
+    }
 }
