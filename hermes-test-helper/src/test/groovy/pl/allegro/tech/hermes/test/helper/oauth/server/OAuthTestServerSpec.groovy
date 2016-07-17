@@ -1,4 +1,4 @@
-package pl.allegro.tech.hermes.consumers.oauth.server
+package pl.allegro.tech.hermes.test.helper.oauth.server
 
 import org.apache.oltu.oauth2.client.OAuthClient
 import org.apache.oltu.oauth2.client.URLConnectionClient
@@ -11,17 +11,17 @@ import org.apache.oltu.oauth2.common.message.types.GrantType
 import spock.lang.Shared
 import spock.lang.Specification
 
-class AuthTestServerSpec extends Specification {
+class OAuthTestServerSpec extends Specification {
 
     @Shared
-    AuthTestServer authServer
+    OAuthTestServer authServer
 
     @Shared
     OAuthClient authClient
 
     def setupSpec() {
         authClient = new OAuthClient(new URLConnectionClient())
-        authServer = new AuthTestServer()
+        authServer = new OAuthTestServer()
         authServer.start()
     }
 
@@ -39,7 +39,7 @@ class AuthTestServerSpec extends Specification {
         authServer.registerResourceOwner("hermes", "hermes123")
 
         when:
-        def request = OAuthClientRequest.tokenLocation(authServer.tokenEndpoint())
+        def request = OAuthClientRequest.tokenLocation(authServer.getTokenEndpoint())
                 .setGrantType(GrantType.PASSWORD)
                 .setUsername("hermes")
                 .setPassword("hermes123")
@@ -59,7 +59,7 @@ class AuthTestServerSpec extends Specification {
         authServer.registerResourceOwner("hermes", "hermes123")
 
         when:
-        def request = OAuthClientRequest.tokenLocation(authServer.tokenEndpoint())
+        def request = OAuthClientRequest.tokenLocation(authServer.getTokenEndpoint())
                 .setGrantType(GrantType.PASSWORD)
                 .setUsername("hermes")
                 .setPassword("INVALID_PASSWORD")
@@ -79,7 +79,7 @@ class AuthTestServerSpec extends Specification {
         authServer.registerResourceOwner("hermes", "hermes123")
 
         when:
-        def request = OAuthClientRequest.tokenLocation(authServer.tokenEndpoint())
+        def request = OAuthClientRequest.tokenLocation(authServer.getTokenEndpoint())
                 .setGrantType(GrantType.PASSWORD)
                 .setUsername("hermes")
                 .setPassword("hermes123")
@@ -99,7 +99,7 @@ class AuthTestServerSpec extends Specification {
         authServer.registerResourceOwner(username, "hermes123")
 
         when:
-        def tokenRequest = OAuthClientRequest.tokenLocation(authServer.tokenEndpoint())
+        def tokenRequest = OAuthClientRequest.tokenLocation(authServer.getTokenEndpoint())
                 .setGrantType(GrantType.PASSWORD)
                 .setUsername(username)
                 .setPassword("hermes123")
@@ -112,7 +112,7 @@ class AuthTestServerSpec extends Specification {
         tokenResponse.accessToken
 
         when:
-        def resourceRequest = new OAuthBearerClientRequest(authServer.resourceEndpoint(username))
+        def resourceRequest = new OAuthBearerClientRequest(authServer.getResourceEndpoint(username))
                 .setAccessToken(tokenResponse.accessToken)
                 .buildHeaderMessage()
         OAuthResourceResponse resource = authClient.resource(resourceRequest, "POST", OAuthResourceResponse.class)
@@ -130,7 +130,7 @@ class AuthTestServerSpec extends Specification {
         def token = authServer.issueAccessToken(username)
 
         when:
-        def resourceRequest = new OAuthBearerClientRequest(authServer.resourceEndpoint(username))
+        def resourceRequest = new OAuthBearerClientRequest(authServer.getResourceEndpoint(username))
                 .setAccessToken(token)
                 .buildHeaderMessage()
         OAuthResourceResponse resource = authClient.resource(resourceRequest, "POST", OAuthResourceResponse.class)
@@ -148,7 +148,7 @@ class AuthTestServerSpec extends Specification {
         authServer.issueAccessToken(username)
 
         when:
-        def resourceRequest = new OAuthBearerClientRequest(authServer.resourceEndpoint(username))
+        def resourceRequest = new OAuthBearerClientRequest(authServer.getResourceEndpoint(username))
                 .setAccessToken("invalid-token")
                 .buildHeaderMessage()
         OAuthResourceResponse response = authClient.resource(resourceRequest, "POST", OAuthResourceResponse.class)
