@@ -49,9 +49,8 @@ public class JettyHttpMessageSenderProvider implements ProtocolMessageSenderProv
     }
 
     private HttpRequestFactory httpRequestFactory(Subscription subscription) {
-        EndpointAddress endpoint = subscription.getEndpoint();
         int requestTimeout = subscription.getSerialSubscriptionPolicy().getRequestTimeout();
-        return new HttpRequestFactory(httpClient, requestTimeout, metadataAppender, authorizationProviderFactory.create(endpoint));
+        return new HttpRequestFactory(httpClient, requestTimeout, metadataAppender, authorizationProviderFactory.create(subscription));
     }
 
 

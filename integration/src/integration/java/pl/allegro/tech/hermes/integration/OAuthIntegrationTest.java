@@ -9,10 +9,7 @@ import pl.allegro.tech.hermes.api.OAuthProvider;
 import pl.allegro.tech.hermes.api.Subscription;
 import pl.allegro.tech.hermes.api.SubscriptionOAuthPolicy;
 import pl.allegro.tech.hermes.api.Topic;
-import pl.allegro.tech.hermes.integration.env.SharedServices;
-import pl.allegro.tech.hermes.integration.helper.Assertions;
 import pl.allegro.tech.hermes.test.helper.builder.SubscriptionBuilder;
-import pl.allegro.tech.hermes.test.helper.endpoint.RemoteServiceEndpoint;
 import pl.allegro.tech.hermes.test.helper.oauth.server.OAuthTestServer;
 
 import javax.ws.rs.core.Response;
@@ -24,15 +21,10 @@ import static pl.allegro.tech.hermes.integration.test.HermesAssertions.assertTha
 
 public class OAuthIntegrationTest extends IntegrationTest {
 
-    private RemoteServiceEndpoint remoteService;
-
-    private Assertions assertions;
-
     private OAuthTestServer oAuthTestServer;
 
     @BeforeClass
     public void initialize() throws IOException {
-        assertions = new Assertions(SharedServices.services().zookeeper());
         oAuthTestServer = new OAuthTestServer();
         oAuthTestServer.start();
     }
@@ -54,7 +46,8 @@ public class OAuthIntegrationTest extends IntegrationTest {
         oAuthTestServer.registerResourceOwner("testUser1", "password1");
         Topic topic = operations.buildTopic("publishAndConsumeOAuthGroup", "topic");
         operations.createOAuthProvider(new OAuthProvider("provider1", oAuthTestServer.getTokenEndpoint(), "client1", "secret1"));
-        SubscriptionOAuthPolicy subscriptionOAuthPolicy = new SubscriptionOAuthPolicy(RESOURCE_OWNER_USERNAME_PASSWORD, "provider1", "scope", "testUser1", "password1");
+        SubscriptionOAuthPolicy subscriptionOAuthPolicy = new SubscriptionOAuthPolicy(RESOURCE_OWNER_USERNAME_PASSWORD,
+                "provider1", "scope", "testUser1", "password1");
         Subscription subscription = SubscriptionBuilder.subscription(topic, "subscription")
                 .withEndpoint(oAuthTestServer.getResourceEndpoint("testUser1"))
                 .withSubscriptionOAuthPolicy(subscriptionOAuthPolicy).build();
@@ -65,6 +58,6 @@ public class OAuthIntegrationTest extends IntegrationTest {
 
         // then
         assertThat(response).hasStatus(CREATED);
-        wait.awaitAtMost(Duration.TEN_SECONDS).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") == 1);
+        wait.awaitAtMost(Duration.ONE_MINUTE).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") == 1);
     }
 }

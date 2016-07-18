@@ -6,6 +6,7 @@ import pl.allegro.tech.hermes.common.config.Configs;
 import pl.allegro.tech.hermes.common.message.undelivered.UndeliveredMessageLog;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.common.metric.executor.InstrumentedExecutorServiceFactory;
+import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthAccessTokenCache;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetQueue;
 import pl.allegro.tech.hermes.consumers.consumer.rate.ConsumerRateLimiter;
 import pl.allegro.tech.hermes.consumers.consumer.rate.InflightsPool;
@@ -36,11 +37,13 @@ public class ConsumerMessageSenderFactory {
     private final UndeliveredMessageLog undeliveredMessageLog;
     private final Clock clock;
     private final ExecutorService rateLimiterReportingExecutor;
+    private final OAuthAccessTokenCache accessTokenCache;
 
     @Inject
     public ConsumerMessageSenderFactory(ConfigFactory configFactory, HermesMetrics hermesMetrics, MessageSenderFactory messageSenderFactory,
                                         Trackers trackers, FutureAsyncTimeout<MessageSendingResult> futureAsyncTimeout,
-                                        UndeliveredMessageLog undeliveredMessageLog, Clock clock, InstrumentedExecutorServiceFactory instrumentedExecutorServiceFactory) {
+                                        UndeliveredMessageLog undeliveredMessageLog, Clock clock, InstrumentedExecutorServiceFactory instrumentedExecutorServiceFactory,
+                                        OAuthAccessTokenCache accessTokenCache) {
 
         this.configFactory = configFactory;
         this.hermesMetrics = hermesMetrics;
@@ -51,11 +54,12 @@ public class ConsumerMessageSenderFactory {
         this.clock = clock;
         this.rateLimiterReportingExecutor = instrumentedExecutorServiceFactory.getExecutorService("rate-limiter-reporter", configFactory.getIntProperty(CONSUMER_RATE_LIMITER_REPORTING_THREAD_POOL_SIZE),
                 configFactory.getBooleanProperty(Configs.CONSUMER_RATE_LIMITER_REPORTING_THREAD_POOL_MONITORING));
+        this.accessTokenCache = accessTokenCache;
     }
-    
+
     public ConsumerMessageSender create(Subscription subscription, ConsumerRateLimiter consumerRateLimiter,
                                         OffsetQueue offsetQueue, InflightsPool inflight) {
-        
+
         SuccessHandler successHandler = new DefaultSuccessHandler(offsetQueue, hermesMetrics, trackers);
         ErrorHandler errorHandler = new DefaultErrorHandler(offsetQueue, hermesMetrics, undeliveredMessageLog,
                 clock, trackers, configFactory.getStringProperty(KAFKA_CLUSTER_NAME));
@@ -69,7 +73,8 @@ public class ConsumerMessageSenderFactory {
                 inflight,
                 hermesMetrics,
                 configFactory.getIntProperty(CONSUMER_SENDER_ASYNC_TIMEOUT_MS),
-                futureAsyncTimeout);
+                futureAsyncTimeout,
+                accessTokenCache);
     }
 
 }

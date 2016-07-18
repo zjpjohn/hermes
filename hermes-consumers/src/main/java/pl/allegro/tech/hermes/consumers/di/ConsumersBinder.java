@@ -20,6 +20,8 @@ import pl.allegro.tech.hermes.consumers.consumer.filtering.MessageFilters;
 import pl.allegro.tech.hermes.consumers.consumer.filtering.chain.FilterChainFactory;
 import pl.allegro.tech.hermes.consumers.consumer.interpolation.MessageBodyInterpolator;
 import pl.allegro.tech.hermes.consumers.consumer.interpolation.UriInterpolator;
+import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthAccessTokenCache;
+import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthResourceAccessTokenLoader;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetQueue;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetsStorage;
 import pl.allegro.tech.hermes.consumers.consumer.offset.kafka.broker.BlockingChannelFactory;
@@ -58,12 +60,7 @@ import pl.allegro.tech.hermes.consumers.supervisor.ConsumersExecutorService;
 import pl.allegro.tech.hermes.consumers.supervisor.ConsumersSupervisor;
 import pl.allegro.tech.hermes.consumers.supervisor.NonblockingConsumersSupervisor;
 import pl.allegro.tech.hermes.consumers.supervisor.process.Retransmitter;
-import pl.allegro.tech.hermes.consumers.supervisor.workload.SubscriptionAssignmentRegistry;
-import pl.allegro.tech.hermes.consumers.supervisor.workload.SubscriptionAssignmentRegistryFactory;
-import pl.allegro.tech.hermes.consumers.supervisor.workload.SupervisorController;
-import pl.allegro.tech.hermes.consumers.supervisor.workload.SupervisorControllerFactory;
-import pl.allegro.tech.hermes.consumers.supervisor.workload.WorkTracker;
-import pl.allegro.tech.hermes.consumers.supervisor.workload.WorkTrackerFactory;
+import pl.allegro.tech.hermes.consumers.supervisor.workload.*;
 
 import javax.inject.Singleton;
 import javax.jms.Message;
@@ -126,6 +123,8 @@ public class ConsumersBinder extends AbstractBinder {
         bind(HttpMessageBatchSenderFactory.class).to(MessageBatchSenderFactory.class).in(Singleton.class);
         bindSingleton(FilterChainFactory.class);
         bind(new MessageFilters(Collections.emptyList(), Collections.emptyList())).to(MessageFilterSource.class);
+        bindSingleton(OAuthAccessTokenCache.class);
+        bindSingleton(OAuthResourceAccessTokenLoader.class);
     }
 
     private <T> void bindSingleton(Class<T> clazz) {

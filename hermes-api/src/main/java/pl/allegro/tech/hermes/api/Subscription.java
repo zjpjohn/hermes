@@ -341,6 +341,11 @@ public class Subscription {
         return subscriptionOAuthPolicy;
     }
 
+    @JsonIgnore
+    public boolean hasSubscriptionOAuthPolicy() {
+        return subscriptionOAuthPolicy != null;
+    }
+
     public Subscription anonymizePassword() {
         if (getEndpoint().containsCredentials()) {
             return new Subscription(

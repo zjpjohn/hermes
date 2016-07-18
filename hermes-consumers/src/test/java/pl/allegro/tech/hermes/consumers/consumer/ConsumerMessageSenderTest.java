@@ -10,6 +10,7 @@ import pl.allegro.tech.hermes.api.Subscription;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.common.metric.Meters;
 import pl.allegro.tech.hermes.common.metric.timer.ConsumerLatencyTimer;
+import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthAccessTokenCache;
 import pl.allegro.tech.hermes.consumers.consumer.rate.AdjustableSemaphore;
 import pl.allegro.tech.hermes.consumers.consumer.rate.ConsumerRateLimiter;
 import pl.allegro.tech.hermes.consumers.consumer.result.ErrorHandler;
@@ -330,7 +331,8 @@ public class ConsumerMessageSenderTest {
         when(messageSenderFactory.create(subscription)).thenReturn(messageSender);
         return new ConsumerMessageSender(subscription, messageSenderFactory, successHandler, errorHandler, rateLimiter,
                 Executors.newSingleThreadExecutor(), () -> inflightSemaphore.release(), hermesMetrics, ASYNC_TIMEOUT_MS,
-                new FutureAsyncTimeout<>(MessageSendingResult::failedResult, Executors.newSingleThreadScheduledExecutor()));
+                new FutureAsyncTimeout<>(MessageSendingResult::failedResult, Executors.newSingleThreadScheduledExecutor()),
+                mock(OAuthAccessTokenCache.class));
     }
 
     private void verifyRateLimiterSuccessfulSendingCountedTimes(int count) {
