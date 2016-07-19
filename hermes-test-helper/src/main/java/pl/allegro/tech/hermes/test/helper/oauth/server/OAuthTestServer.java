@@ -33,18 +33,18 @@ public class OAuthTestServer {
 
     private PathHandler createPathHandler() {
         try {
-            Servlet tokenServlet = new OAccessTokenServlet(storage);
-            Servlet resourceServlet = new ResourceServlet(storage);
+            Servlet tokenServlet = new OAuthAccessTokenServlet(storage);
+            Servlet resourceServlet = new OAuthResourceServlet(storage);
 
             DeploymentInfo deploymentInfo = Servlets.deployment()
                     .setClassLoader(OAuthTestServer.class.getClassLoader())
                     .setContextPath("/")
                     .setDeploymentName("OAuthTestServer")
                     .addServlets(
-                            Servlets.servlet("AuthTokenServlet", OAccessTokenServlet.class,
+                            Servlets.servlet("AuthTokenServlet", OAuthAccessTokenServlet.class,
                                     new ImmediateInstanceFactory<>(tokenServlet))
                                     .addMapping(OAUTH2_TOKEN_ENDPOINT),
-                            Servlets.servlet("ResourceServlet", ResourceServlet.class,
+                            Servlets.servlet("ResourceServlet", OAuthResourceServlet.class,
                                     new ImmediateInstanceFactory<>(resourceServlet))
                                     .addMapping(OAUTH2_RESOURCE_ENDPOINT)
                     );
@@ -79,11 +79,35 @@ public class OAuthTestServer {
     }
 
     public void clearStorage() {
-        storage.clear();
+        storage.clearAll();
+    }
+
+    public void unregisterAllClients() {
+        storage.clearClients();
+    }
+
+    public void unregisterAllResourceOwners() {
+        storage.clearOwners();
+    }
+
+    public void revokeAllTokens() {
+        storage.clearTokens();
+    }
+
+    public void clearResourceAccessCounters() {
+        storage.clearAccessCounters();
     }
 
     public int getResourceAccessCount(String username) {
         return storage.getResourceAccessCount(username);
+    }
+
+    public void clearTokenIssueCounters() {
+        storage.clearTokenIssueCounters();
+    }
+
+    public int getTokenIssueCount(String username) {
+        return storage.getTokenIssueCount(username);
     }
 
     public void start() {

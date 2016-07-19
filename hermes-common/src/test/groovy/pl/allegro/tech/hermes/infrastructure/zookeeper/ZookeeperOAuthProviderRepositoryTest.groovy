@@ -15,7 +15,7 @@ class ZookeeperOAuthProviderRepositoryTest extends IntegrationTest {
     }
 
     def "should create oauth provider"() {
-        def myProvider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "pass123")
+        def myProvider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "pass123", 1)
         when:
         repository.createOAuthProvider(myProvider)
         wait.untilOAuthProviderCreated(myProvider.name)
@@ -25,13 +25,13 @@ class ZookeeperOAuthProviderRepositoryTest extends IntegrationTest {
     }
 
     def "should update oauth provider"() {
-        def myProvider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "pass123")
+        def myProvider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "pass123", 1)
         given:
         repository.createOAuthProvider(myProvider)
         wait.untilOAuthProviderCreated(myProvider.name)
 
         when:
-        def updatedProvider = new OAuthProvider("myProvider", "http://example.com/token-updated", "client123", "pass123-updated")
+        def updatedProvider = new OAuthProvider("myProvider", "http://example.com/token-updated", "client123", "pass123-updated", 1)
         repository.updateOAuthProvider(updatedProvider)
 
         then:
@@ -42,8 +42,8 @@ class ZookeeperOAuthProviderRepositoryTest extends IntegrationTest {
 
     def "should list all oauth providers"() {
         given:
-        def myProvider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "pass123")
-        def myOtherProvider = new OAuthProvider("myOtherProvider", "http://example.com/token2", "client1234", "pass1234")
+        def myProvider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "pass123", 1)
+        def myOtherProvider = new OAuthProvider("myOtherProvider", "http://example.com/token2", "client1234", "pass1234", 1)
 
         when:
         repository.createOAuthProvider(myProvider)
@@ -58,7 +58,7 @@ class ZookeeperOAuthProviderRepositoryTest extends IntegrationTest {
 
     def "should remove oauth provider"() {
         given:
-        def myProvider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "pass123")
+        def myProvider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "pass123", 1)
         repository.createOAuthProvider(myProvider)
         wait.untilOAuthProviderCreated(myProvider.name)
 

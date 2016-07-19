@@ -10,7 +10,9 @@ import pl.allegro.tech.hermes.api.Subscription;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.common.metric.Meters;
 import pl.allegro.tech.hermes.common.metric.timer.ConsumerLatencyTimer;
+import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthAccessToken;
 import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthAccessTokenCache;
+import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthTokenLoadingException;
 import pl.allegro.tech.hermes.consumers.consumer.rate.AdjustableSemaphore;
 import pl.allegro.tech.hermes.consumers.consumer.rate.ConsumerRateLimiter;
 import pl.allegro.tech.hermes.consumers.consumer.result.ErrorHandler;
@@ -37,6 +39,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
+import static pl.allegro.tech.hermes.api.SubscriptionOAuthPolicy.subscriptionOAuthPolicyWithPasswordGrant;
 import static pl.allegro.tech.hermes.api.SubscriptionPolicy.Builder.subscriptionPolicy;
 import static pl.allegro.tech.hermes.test.helper.builder.SubscriptionBuilder.subscription;
 
@@ -77,6 +80,9 @@ public class ConsumerMessageSenderTest {
 
     @Mock
     private Meter errors;
+
+    @Mock
+    private OAuthAccessTokenCache oAuthAccessTokenCache;
 
     private AdjustableSemaphore inflightSemaphore;
 
@@ -227,6 +233,43 @@ public class ConsumerMessageSenderTest {
     }
 
     @Test
+    public void shouldRetryOn401UnauthorizedForOAuthSecuredSubscription() {
+        // given
+        Subscription subscription = subscriptionWithout4xxRetryAndWithOAuthPolicy();
+        setUpMetrics(subscription);
+        ConsumerMessageSender sender = consumerMessageSender(subscription);
+        Message message = message();
+        doReturn(failure(401)).doReturn(failure(401)).doReturn(success()).when(messageSender).send(message);
+        doReturn(accessToken()).when(oAuthAccessTokenCache).getToken(subscription);
+
+        // when
+        sender.sendMessage(message);
+
+        // then
+        verifyRateLimiterFailedSendingCountedTimes(2);
+        verifyRateLimiterSuccessfulSendingCountedTimes(1);
+    }
+
+    @Test
+    public void shouldRetryPreloadingAccessTokenAfterFailure() {
+        // given
+        Subscription subscription = subscriptionWithout4xxRetryAndWithOAuthPolicy();
+        setUpMetrics(subscription);
+        ConsumerMessageSender sender = consumerMessageSender(subscription);
+        Message message = message();
+        doReturn(success()).when(messageSender).send(message);
+        doThrow(OAuthTokenLoadingException.class).doThrow(OAuthTokenLoadingException.class)
+                .doReturn(accessToken()).when(oAuthAccessTokenCache).getToken(subscription);
+
+        // when
+        sender.sendMessage(message);
+
+        // then
+        verifyRateLimiterFailedSendingCountedTimes(2);
+        verifyRateLimiterSuccessfulSendingCountedTimes(1);
+    }
+
+    @Test
     public void shouldRaiseTimeoutWhenSenderNotCompletesResult() {
         // given
         Message message = message();
@@ -332,7 +375,7 @@ public class ConsumerMessageSenderTest {
         return new ConsumerMessageSender(subscription, messageSenderFactory, successHandler, errorHandler, rateLimiter,
                 Executors.newSingleThreadExecutor(), () -> inflightSemaphore.release(), hermesMetrics, ASYNC_TIMEOUT_MS,
                 new FutureAsyncTimeout<>(MessageSendingResult::failedResult, Executors.newSingleThreadScheduledExecutor()),
-                mock(OAuthAccessTokenCache.class));
+                oAuthAccessTokenCache);
     }
 
     private void verifyRateLimiterSuccessfulSendingCountedTimes(int count) {
@@ -386,6 +429,15 @@ public class ConsumerMessageSenderTest {
                 .build();
     }
 
+    private Subscription subscriptionWithout4xxRetryAndWithOAuthPolicy() {
+        return subscriptionBuilderWithTestValues()
+                .withSubscriptionOAuthPolicy(subscriptionOAuthPolicyWithPasswordGrant("myOAuthProvider")
+                        .withUsername("user1")
+                        .withPassword("abc123")
+                        .build())
+                .build();
+    }
+
     private Subscription subscriptionWithEndpoint(String endpoint) {
         return subscriptionBuilderWithTestValues().withEndpoint(endpoint).build();
     }
@@ -396,6 +448,10 @@ public class ConsumerMessageSenderTest {
 
     private SubscriptionBuilder subscriptionBuilderWithTestValues() {
         return subscription("group.topic","subscription");
+    }
+
+    private OAuthAccessToken accessToken() {
+        return new OAuthAccessToken("abc123", 3600);
     }
 
     private RuntimeException exception() {

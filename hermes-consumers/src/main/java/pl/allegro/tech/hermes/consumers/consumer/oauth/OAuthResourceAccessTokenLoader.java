@@ -8,6 +8,8 @@ import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pl.allegro.tech.hermes.api.OAuthProvider;
 import pl.allegro.tech.hermes.api.Subscription;
 import pl.allegro.tech.hermes.api.SubscriptionOAuthPolicy;
@@ -18,6 +20,8 @@ import javax.inject.Inject;
 import static pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthRequestParams.*;
 
 public class OAuthResourceAccessTokenLoader extends CacheLoader<Subscription, OAuthAccessToken> {
+
+    private static final Logger logger = LoggerFactory.getLogger(OAuthResourceAccessTokenLoader.class);
 
     private final HttpClient httpClient;
 
@@ -55,6 +59,8 @@ public class OAuthResourceAccessTokenLoader extends CacheLoader<Subscription, OA
         }
         OAuthAccessTokenResponse accessTokenResponse = objectMapper.readValue(response.getContentAsString(),
                 OAuthAccessTokenResponse.class);
+        logger.info("Access token loaded for subscription {} using {} OAuth provider",
+                subscription.getQualifiedName().toString(), providerName);
         return accessTokenResponse.toAccessToken();
     }
 }

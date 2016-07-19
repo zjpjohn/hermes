@@ -9,7 +9,7 @@ import java.util.List;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-@Path("oAuthProviders")
+@Path("oauth/providers")
 public interface OAuthProviderEndpoint {
 
     @GET

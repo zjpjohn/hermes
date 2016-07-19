@@ -1,9 +1,9 @@
 package pl.allegro.tech.hermes.consumers.consumer;
 
+import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pl.allegro.tech.hermes.api.Subscription;
-import pl.allegro.tech.hermes.api.SubscriptionOAuthPolicy;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.common.metric.timer.ConsumerLatencyTimer;
 import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthAccessTokenCache;
@@ -41,7 +41,6 @@ public class ConsumerMessageSender {
     private final InflightsPool inflight;
     private final FutureAsyncTimeout<MessageSendingResult> async;
     private final int asyncTimeoutMs;
-    private final SubscriptionOAuthPolicy subscriptionOAuthPolicy;
     private int requestTimeoutMs;
     private ConsumerLatencyTimer consumerLatencyTimer;
     private MessageSender messageSender;
@@ -59,7 +58,6 @@ public class ConsumerMessageSender {
         this.rateLimiter = rateLimiter;
         this.messageSenderFactory = messageSenderFactory;
         this.accessTokenCache = accessTokenCache;
-        this.subscriptionOAuthPolicy = subscription.getSubscriptionOAuthPolicy();
         this.messageSender = messageSenderFactory.create(subscription);
         this.subscription = subscription;
         this.inflight = inflight;
@@ -89,9 +87,31 @@ public class ConsumerMessageSender {
      */
     public void sendMessage(final Message message) {
         rateLimiter.acquire();
+        try {
+            tryPreloadingOAuthContext();
+        } catch (Exception e) {
+            handleFailedOAuthContextPreloading(message, e);
+            return;
+        }
         ConsumerLatencyTimer.Context timer = consumerLatencyTimer.time();
         CompletableFuture<MessageSendingResult> response = async.within(messageSender.send(message), Duration.ofMillis(asyncTimeoutMs + requestTimeoutMs));
         response.thenAcceptAsync(new ResponseHandlingListener(message, timer), deliveryReportingExecutor);
+    }
+
+    private void tryPreloadingOAuthContext() {
+        if (subscription.hasSubscriptionOAuthPolicy()) {
+            accessTokenCache.getToken(subscription);
+        }
+    }
+
+    private void handleFailedOAuthContextPreloading(final Message message, Throwable cause) {
+        // todo add failed oauth preloading metrics
+        rateLimiter.registerFailedSending();
+        if (running) {
+            sendAsync(message, 0);
+        } else {
+            handleMessageDiscarding(message, MessageSendingResult.failedResult(cause));
+        }
     }
 
     public synchronized void updateSubscription(Subscription newSubscription) {
@@ -100,9 +120,10 @@ public class ConsumerMessageSender {
                 newSubscription.getSerialSubscriptionPolicy());
         boolean endpointAddressResolverMetadataChanged = !Objects.equals(this.subscription.getEndpointAddressResolverMetadata(),
                 newSubscription.getEndpointAddressResolverMetadata());
+        boolean oAuthPolicyChanged = !Objects.equals(this.subscription.getSubscriptionOAuthPolicy(), newSubscription.getSubscriptionOAuthPolicy());
         this.requestTimeoutMs = newSubscription.getSerialSubscriptionPolicy().getRequestTimeout();
         this.subscription = newSubscription;
-        if (endpointUpdated || subscriptionPolicyUpdated || endpointAddressResolverMetadataChanged) {
+        if (endpointUpdated || subscriptionPolicyUpdated || endpointAddressResolverMetadataChanged || oAuthPolicyChanged) {
             this.messageSender = messageSenderFactory.create(newSubscription);
         }
     }
@@ -114,7 +135,7 @@ public class ConsumerMessageSender {
     }
 
     private void handleFailedSending(Message message, MessageSendingResult result) {
-        if (result.ignoreInRateCalculation(subscription.getSerialSubscriptionPolicy().isRetryClientErrors())) {
+        if (result.ignoreInRateCalculation(shouldRetryOnClientError(), subscription.hasSubscriptionOAuthPolicy())) {
             rateLimiter.registerSuccessfulSending();
         } else {
             rateLimiter.registerFailedSending();
@@ -133,11 +154,24 @@ public class ConsumerMessageSender {
     }
 
     private boolean messageSentSucceeded(MessageSendingResult result) {
-        return result.succeeded() || (result.isClientError() && !subscription.getSerialSubscriptionPolicy().isRetryClientErrors());
+        return result.succeeded() || isClientErrorButShouldNotBeRetried(result);
+    }
+
+    private boolean isClientErrorButShouldNotBeRetried(MessageSendingResult result) {
+        return result.isClientError() && !shouldRetryOnClientError();
     }
 
     private boolean shouldResendMessage(MessageSendingResult result) {
-        return !result.succeeded() && (!result.isClientError() || subscription.getSerialSubscriptionPolicy().isRetryClientErrors());
+        return !result.succeeded() && (!result.isClientError() || shouldRetryOnClientError()
+                || isUnauthorizedForOAuthSecuredSubscription(result));
+    }
+
+    private boolean shouldRetryOnClientError() {
+        return subscription.getSerialSubscriptionPolicy().isRetryClientErrors();
+    }
+
+    private boolean isUnauthorizedForOAuthSecuredSubscription(MessageSendingResult result) {
+        return subscription.hasSubscriptionOAuthPolicy() && result.getStatusCode() == HttpStatus.UNAUTHORIZED_401;
     }
 
     class ResponseHandlingListener implements java.util.function.Consumer<MessageSendingResult> {
@@ -158,6 +192,11 @@ public class ConsumerMessageSender {
                 handleMessageSendingSuccess(message, result);
             } else {
                 handleFailedSending(message, result);
+                logger.error("failed because {} {}", result.getStatusCode(), result.getRootCause());
+
+                if (isUnauthorizedForOAuthSecuredSubscription(result)) {
+                    accessTokenCache.invalidateToken(subscription);
+                }
 
                 List<String> succeededUris = result.getSucceededUris(ConsumerMessageSender.this::messageSentSucceeded);
                 message.incrementRetryCounter(succeededUris);

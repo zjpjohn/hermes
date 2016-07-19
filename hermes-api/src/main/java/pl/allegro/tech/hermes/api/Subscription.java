@@ -69,10 +69,11 @@ public class Subscription {
     @Valid
     private SubscriptionOAuthPolicy subscriptionOAuthPolicy;
 
-    public enum State {
-        PENDING, ACTIVE, SUSPENDED
-    }
 
+
+    public enum State {
+        PENDING, ACTIVE, SUSPENDED;
+    }
     private Subscription(TopicName topicName,
                          String name,
                          EndpointAddress endpoint,
@@ -170,7 +171,7 @@ public class Subscription {
             @JsonProperty("mode") SubscriptionMode mode,
             @JsonProperty("headers") List<Header> headers,
             @JsonProperty("endpointAddressResolverMetadata") EndpointAddressResolverMetadata endpointAddressResolverMetadata,
-            @JsonProperty("resourceOwnerCredentialsGrantOAuthPolicy") SubscriptionOAuthPolicy subscriptionOAuthPolicy) {
+            @JsonProperty("oAuthPolicy") SubscriptionOAuthPolicy subscriptionOAuthPolicy) {
 
         DeliveryType validDeliveryType = deliveryType == null ? DeliveryType.SERIAL : deliveryType;
         SubscriptionMode subscriptionMode = mode == null ? SubscriptionMode.ANYCAST : mode;

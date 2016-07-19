@@ -12,6 +12,8 @@ public class OAuthProviderBuilder {
 
     private String clientSecret = "testPassword123";
 
+    private int tokenRequestDelay = 1;
+
     public OAuthProviderBuilder(String name) {
         this.name = name;
     }
@@ -21,7 +23,7 @@ public class OAuthProviderBuilder {
     }
 
     public OAuthProvider build() {
-        return new OAuthProvider(name, tokenEndpoint, clientId, clientSecret);
+        return new OAuthProvider(name, tokenEndpoint, clientId, clientSecret, tokenRequestDelay);
     }
 
     public OAuthProviderBuilder withTokenEndpoint(String tokenEndpoint) {
@@ -36,6 +38,11 @@ public class OAuthProviderBuilder {
 
     public OAuthProviderBuilder withClientSecret(String clientSecret) {
         this.clientSecret = clientSecret;
+        return this;
+    }
+
+    public OAuthProviderBuilder withTokenRequestDelay(int tokenRequestDelay) {
+        this.tokenRequestDelay = tokenRequestDelay;
         return this;
     }
 }

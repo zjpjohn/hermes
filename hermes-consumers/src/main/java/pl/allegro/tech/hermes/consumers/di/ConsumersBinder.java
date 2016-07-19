@@ -21,6 +21,7 @@ import pl.allegro.tech.hermes.consumers.consumer.filtering.chain.FilterChainFact
 import pl.allegro.tech.hermes.consumers.consumer.interpolation.MessageBodyInterpolator;
 import pl.allegro.tech.hermes.consumers.consumer.interpolation.UriInterpolator;
 import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthAccessTokenCache;
+import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthProviderTokenRequestRateLimiterLoader;
 import pl.allegro.tech.hermes.consumers.consumer.oauth.OAuthResourceAccessTokenLoader;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetQueue;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetsStorage;
@@ -125,6 +126,7 @@ public class ConsumersBinder extends AbstractBinder {
         bind(new MessageFilters(Collections.emptyList(), Collections.emptyList())).to(MessageFilterSource.class);
         bindSingleton(OAuthAccessTokenCache.class);
         bindSingleton(OAuthResourceAccessTokenLoader.class);
+        bindSingleton(OAuthProviderTokenRequestRateLimiterLoader.class);
     }
 
     private <T> void bindSingleton(Class<T> clazz) {

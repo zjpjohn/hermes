@@ -5,6 +5,8 @@ import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.util.BytesContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pl.allegro.tech.hermes.api.ContentType;
 import pl.allegro.tech.hermes.consumers.consumer.Message;
 import pl.allegro.tech.hermes.consumers.consumer.trace.MetadataAppender;
@@ -23,6 +25,8 @@ import static pl.allegro.tech.hermes.common.http.MessageMetadataHeaders.SCHEMA_V
 import static pl.allegro.tech.hermes.consumers.consumer.sender.http.AvroMediaType.AVRO_BINARY;
 
 class HttpRequestFactory {
+
+    private static final Logger logger = LoggerFactory.getLogger(HttpRequestFactory.class);
 
     private final HttpClient client;
     private final long timeout;

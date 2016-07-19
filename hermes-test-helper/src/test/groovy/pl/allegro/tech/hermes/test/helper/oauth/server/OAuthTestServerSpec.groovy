@@ -157,7 +157,7 @@ class OAuthTestServerSpec extends Specification {
         response.responseCode == 401
     }
 
-    def "should count resource access count"() {
+    def "should count every resource access"() {
         given:
         authServer.registerClient("test_client", "abc")
         authServer.registerResourceOwner("hermes", "hermes123")
@@ -172,5 +172,22 @@ class OAuthTestServerSpec extends Specification {
 
         then:
         authServer.getResourceAccessCount("hermes") == 2
+    }
+
+    def "should count every token issue"() {
+        given:
+        authServer.registerResourceOwner("hermes", "hermes123")
+
+        when:
+        authServer.issueAccessToken("hermes")
+
+        then:
+        authServer.getTokenIssueCount("hermes") == 1
+
+        when:
+        authServer.issueAccessToken("hermes")
+
+        then:
+        authServer.getTokenIssueCount("hermes") == 2
     }
 }

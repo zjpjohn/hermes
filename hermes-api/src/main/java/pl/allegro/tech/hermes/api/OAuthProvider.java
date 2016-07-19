@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hibernate.validator.constraints.NotEmpty;
 
+import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
 import java.util.Objects;
 
@@ -26,15 +27,20 @@ public class OAuthProvider {
     @NotEmpty
     private String clientSecret;
 
+    @Min(1)
+    private int tokenRequestDelay;
+
     @JsonCreator
     public OAuthProvider(@JsonProperty("name") String name,
                          @JsonProperty("tokenEndpoint") String tokenEndpoint,
                          @JsonProperty("clientId") String clientId,
-                         @JsonProperty("clientSecret") String clientSecret) {
+                         @JsonProperty("clientSecret") String clientSecret,
+                         @JsonProperty("tokenRequestDelay") int tokenRequestDelay) {
         this.name = name;
         this.tokenEndpoint = tokenEndpoint;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+        this.tokenRequestDelay = tokenRequestDelay;
     }
 
     public String getName() {
@@ -53,6 +59,10 @@ public class OAuthProvider {
         return clientSecret;
     }
 
+    public int getTokenRequestDelay() {
+        return tokenRequestDelay;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -62,7 +72,8 @@ public class OAuthProvider {
             return false;
         }
         OAuthProvider that = (OAuthProvider) o;
-        return Objects.equals(name, that.name) &&
+        return tokenRequestDelay == that.tokenRequestDelay &&
+                Objects.equals(name, that.name) &&
                 Objects.equals(tokenEndpoint, that.tokenEndpoint) &&
                 Objects.equals(clientId, that.clientId) &&
                 Objects.equals(clientSecret, that.clientSecret);
@@ -70,10 +81,11 @@ public class OAuthProvider {
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, tokenEndpoint, clientId, clientSecret);
+        return Objects.hash(name, tokenEndpoint, clientId, clientSecret, tokenRequestDelay);
     }
 
     public OAuthProvider anonymize() {
-        return new OAuthProvider(name, tokenEndpoint, clientId, ANONYMIZED_CLIENT_SECRET);
+        return new OAuthProvider(name, tokenEndpoint, clientId, ANONYMIZED_CLIENT_SECRET, tokenRequestDelay);
     }
+
 }

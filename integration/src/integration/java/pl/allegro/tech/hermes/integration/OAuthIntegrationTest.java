@@ -23,10 +23,18 @@ public class OAuthIntegrationTest extends IntegrationTest {
 
     private OAuthTestServer oAuthTestServer;
 
+    SubscriptionOAuthPolicy resourceOwnersCredentialsPolicy = new SubscriptionOAuthPolicy(RESOURCE_OWNER_USERNAME_PASSWORD,
+            "provider1", "scope", "testUser1", "password1");
+
     @BeforeClass
     public void initialize() throws IOException {
         oAuthTestServer = new OAuthTestServer();
         oAuthTestServer.start();
+        oAuthTestServer.registerClient("client1", "secret1");
+        oAuthTestServer.registerResourceOwner("testUser1", "password1");
+
+        operations.createOAuthProvider(new OAuthProvider("provider1", oAuthTestServer.getTokenEndpoint(),
+                "client1", "secret1", 2));
     }
 
     @AfterClass
@@ -36,28 +44,82 @@ public class OAuthIntegrationTest extends IntegrationTest {
 
     @BeforeMethod
     public void initializeAlways() {
-        oAuthTestServer.clearStorage();
+        oAuthTestServer.revokeAllTokens();
+        oAuthTestServer.clearResourceAccessCounters();
+        oAuthTestServer.clearTokenIssueCounters();
     }
 
     @Test
-    public void shouldPublishAndConsumeMessage() {
+    public void shouldPublishAndSendMessageToOAuthSecuredEndpoint() {
         // given
-        oAuthTestServer.registerClient("client1", "secret1");
-        oAuthTestServer.registerResourceOwner("testUser1", "password1");
         Topic topic = operations.buildTopic("publishAndConsumeOAuthGroup", "topic");
-        operations.createOAuthProvider(new OAuthProvider("provider1", oAuthTestServer.getTokenEndpoint(), "client1", "secret1"));
-        SubscriptionOAuthPolicy subscriptionOAuthPolicy = new SubscriptionOAuthPolicy(RESOURCE_OWNER_USERNAME_PASSWORD,
-                "provider1", "scope", "testUser1", "password1");
         Subscription subscription = SubscriptionBuilder.subscription(topic, "subscription")
                 .withEndpoint(oAuthTestServer.getResourceEndpoint("testUser1"))
-                .withSubscriptionOAuthPolicy(subscriptionOAuthPolicy).build();
+                .withSubscriptionOAuthPolicy(resourceOwnersCredentialsPolicy).build();
         operations.createSubscription(topic, subscription);
 
         // when
         Response response = publisher.publish(topic.getQualifiedName(), "hello world");
+        assertThat(response).hasStatus(CREATED);
 
         // then
+        wait.awaitAtMost(Duration.TEN_SECONDS).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") == 1);
+    }
+
+    @Test
+    public void shouldInvalidateRevokedTokenAndSendMessageUsingFreshOne() {
+        // given
+        Topic topic = operations.buildTopic("publishAndConsumeOAuthGroup2", "topic");
+        Subscription subscription = SubscriptionBuilder.subscription(topic, "subscription")
+                .withEndpoint(oAuthTestServer.getResourceEndpoint("testUser1"))
+                .withSubscriptionOAuthPolicy(resourceOwnersCredentialsPolicy).build();
+        operations.createSubscription(topic, subscription);
+
+        // when
+        Response response = publisher.publish(topic.getQualifiedName(), "hello world");
         assertThat(response).hasStatus(CREATED);
-        wait.awaitAtMost(Duration.ONE_MINUTE).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") == 1);
+
+        // then
+        wait.awaitAtMost(Duration.TEN_SECONDS).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") == 1);
+
+        // and when
+        oAuthTestServer.revokeAllTokens();
+        response = publisher.publish(topic.getQualifiedName(), "hello again");
+        assertThat(response).hasStatus(CREATED);
+
+        // then
+        wait.awaitAtMost(Duration.TEN_SECONDS).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") == 2);
+    }
+
+    @Test
+    public void shouldNotRequestAccessTokenMoreFrequentlyThanConfiguredForOAuthProvider() {
+        // given
+        Topic topic = operations.buildTopic("publishAndConsumeOAuthGroup3", "topic");
+        Subscription subscription = SubscriptionBuilder.subscription(topic, "subscription")
+                .withEndpoint(oAuthTestServer.getResourceEndpoint("testUser1"))
+                .withSubscriptionOAuthPolicy(resourceOwnersCredentialsPolicy).build();
+        operations.createSubscription(topic, subscription);
+
+        // when
+        Response response = publisher.publish(topic.getQualifiedName(), "hello world");
+        assertThat(response).hasStatus(CREATED);
+
+        // then
+        wait.awaitAtMost(Duration.TEN_SECONDS).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") == 1);
+
+        // and when
+        oAuthTestServer.revokeAllTokens();
+        for (int i = 0; i < 20; i++) {
+            publisher.publish(topic.getQualifiedName(), "hello again");
+        }
+        wait.awaitAtMost(Duration.TEN_SECONDS).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") > 1);
+        oAuthTestServer.revokeAllTokens();
+        for (int i = 0; i < 20; i++) {
+            publisher.publish(topic.getQualifiedName(), "hello again");
+        }
+
+        // then
+        wait.awaitAtMost(Duration.TEN_SECONDS).until(() -> oAuthTestServer.getResourceAccessCount("testUser1") == 41);
+        assertThat(oAuthTestServer.getTokenIssueCount("testUser1")).isEqualTo(3);
     }
 }

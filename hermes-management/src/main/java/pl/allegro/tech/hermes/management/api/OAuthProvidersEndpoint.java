@@ -18,8 +18,8 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.status;
 
 @Component
-@Path("/oAuthProviders")
-@Api(value = "/oAuthProviders", description = "Operations on OAuth providers")
+@Path("/oauth/providers")
+@Api(value = "/oauth/providers", description = "Operations on OAuth providers")
 public class OAuthProvidersEndpoint {
 
     private final OAuthProviderService service;

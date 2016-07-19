@@ -17,11 +17,11 @@ import java.io.IOException;
 import static pl.allegro.tech.hermes.test.helper.oauth.server.OAuthServletResponseUtils.getOAuthJsonErrorResponse;
 import static pl.allegro.tech.hermes.test.helper.oauth.server.OAuthServletResponseUtils.sendResponse;
 
-class OAccessTokenServlet extends HttpServlet {
+class OAuthAccessTokenServlet extends HttpServlet {
 
     private final OAuthTestServerStorage storage;
 
-    OAccessTokenServlet(OAuthTestServerStorage storage) {
+    OAuthAccessTokenServlet(OAuthTestServerStorage storage) {
         this.storage = storage;
     }
 
@@ -33,7 +33,9 @@ class OAccessTokenServlet extends HttpServlet {
             validateClientCredentials(request);
             validateResourceOwnerCredentials(request);
 
-            String token = storage.issueToken(request.getUsername());
+            String username = request.getUsername();
+            String token = storage.issueToken(username);
+
             OAuthResponse response = OAuthASResponse.tokenResponse(200)
                     .setAccessToken(token)
                     .setTokenType(TokenType.BEARER.toString())

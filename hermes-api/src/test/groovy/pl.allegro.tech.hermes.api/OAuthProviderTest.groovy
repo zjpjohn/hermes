@@ -11,7 +11,7 @@ class OAuthProviderTest extends Specification {
 
     def "should serialize to json and deserialize back"() {
         given:
-        def provider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "secret123")
+        def provider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "secret123", 1)
 
         when:
         def json = objectMapper.writeValueAsString(provider)
@@ -29,7 +29,7 @@ class OAuthProviderTest extends Specification {
 
     def "should anonymize client secret"() {
         when:
-        def provider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "secret123")
+        def provider = new OAuthProvider("myProvider", "http://example.com/token", "client123", "secret123", 1)
                 .anonymize()
 
         then:

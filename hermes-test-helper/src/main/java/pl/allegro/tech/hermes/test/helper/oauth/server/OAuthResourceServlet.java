@@ -15,11 +15,11 @@ import java.io.IOException;
 import static pl.allegro.tech.hermes.test.helper.oauth.server.OAuthServletResponseUtils.getOAuthJsonErrorResponse;
 import static pl.allegro.tech.hermes.test.helper.oauth.server.OAuthServletResponseUtils.sendResponse;
 
-class ResourceServlet extends HttpServlet {
+class OAuthResourceServlet extends HttpServlet {
 
     private final OAuthTestServerStorage storage;
 
-    ResourceServlet(OAuthTestServerStorage storage) {
+    OAuthResourceServlet(OAuthTestServerStorage storage) {
         this.storage = storage;
     }
 
@@ -40,6 +40,7 @@ class ResourceServlet extends HttpServlet {
         } catch (OAuthProblemException e) {
             OAuthResponse response = getOAuthJsonErrorResponse(e, HttpServletResponse.SC_UNAUTHORIZED);
             resp.setHeader(Headers.CONTENT_TYPE.toString(), "application/json");
+            resp.setHeader(Headers.WWW_AUTHENTICATE.toString(), "Token");
             sendResponse(resp, response.getBody(), response.getResponseStatus());
         } catch (OAuthSystemException e) {
             sendResponse(resp, e.getMessage(), 500);

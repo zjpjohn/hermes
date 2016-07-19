@@ -79,4 +79,45 @@ public class SubscriptionOAuthPolicy {
     public int hashCode() {
         return Objects.hash(grantType, providerName, scope, username, password);
     }
+
+    public static Builder subscriptionOAuthPolicyWithPasswordGrant(String providerName) {
+        return new Builder(providerName, GrantType.RESOURCE_OWNER_USERNAME_PASSWORD);
+    }
+
+    public static Builder subscriptionOAuthPolicyWithClientCredentialsGrant(String providerName) {
+        return new Builder(providerName, GrantType.CLIENT_CREDENTIALS);
+    }
+
+    public static class Builder {
+
+        private final String providerName;
+        private final GrantType grantType;
+        private String scope;
+        private String username;
+        private String password;
+
+        public Builder(String providerName, GrantType grantType) {
+            this.providerName = providerName;
+            this.grantType = grantType;
+        }
+
+        public Builder withScope(String scope) {
+            this.scope = scope;
+            return this;
+        }
+
+        public Builder withUsername(String username) {
+            this.username = username;
+            return this;
+        }
+
+        public Builder withPassword(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public SubscriptionOAuthPolicy build() {
+            return new SubscriptionOAuthPolicy(grantType, providerName, scope, username, password);
+        }
+    }
 }
