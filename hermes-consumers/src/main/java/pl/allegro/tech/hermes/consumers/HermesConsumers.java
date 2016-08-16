@@ -11,7 +11,7 @@ import pl.allegro.tech.hermes.common.kafka.KafkaNamesMapper;
 import pl.allegro.tech.hermes.common.kafka.KafkaNamesMapperHolder;
 import pl.allegro.tech.hermes.consumers.consumer.sender.MessageSenderFactory;
 import pl.allegro.tech.hermes.consumers.consumer.sender.ProtocolMessageSenderProvider;
-import pl.allegro.tech.hermes.consumers.health.HealthCheckServer;
+import pl.allegro.tech.hermes.consumers.health.ConsumerHttpServer;
 import pl.allegro.tech.hermes.consumers.supervisor.workload.SupervisorController;
 import pl.allegro.tech.hermes.tracker.consumers.LogRepository;
 import pl.allegro.tech.hermes.tracker.consumers.Trackers;
@@ -26,7 +26,7 @@ public class HermesConsumers {
     private static final Logger logger = LoggerFactory.getLogger(HermesConsumers.class);
 
     private final HooksHandler hooksHandler;
-    private final HealthCheckServer healthCheckServer;
+    private final ConsumerHttpServer consumerHttpServer;
     private final Trackers trackers;
     private final List<Function<ServiceLocator, LogRepository>> logRepositories;
     private final Optional<Function<ServiceLocator, KafkaNamesMapper>> kafkaNamesMapper;
@@ -54,14 +54,14 @@ public class HermesConsumers {
         serviceLocator = createDIContainer(binders);
 
         trackers = serviceLocator.getService(Trackers.class);
-        healthCheckServer = serviceLocator.getService(HealthCheckServer.class);
+        consumerHttpServer = serviceLocator.getService(ConsumerHttpServer.class);
         messageSenderFactory = serviceLocator.getService(MessageSenderFactory.class);
 
         supervisorController = serviceLocator.getService(SupervisorController.class);
 
         hooksHandler.addShutdownHook((s) -> {
             try {
-                healthCheckServer.stop();
+                consumerHttpServer.stop();
                 supervisorController.shutdown();
                 s.shutdown();
             } catch (Exception e) {
@@ -84,7 +84,7 @@ public class HermesConsumers {
             kafkaNamesMapper.ifPresent(it -> ((KafkaNamesMapperHolder) serviceLocator.getService(KafkaNamesMapper.class)).setKafkaNamespaceMapper(it.apply(serviceLocator)));
 
             supervisorController.start();
-            healthCheckServer.start();
+            consumerHttpServer.start();
             hooksHandler.startup(serviceLocator);
         } catch (Exception e) {
             logger.error("Exception while starting Hermes Consumers", e);

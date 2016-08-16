@@ -16,9 +16,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -41,7 +38,7 @@ import java.util.function.Function;
  * inlfightOffsets are all offsets that are currently in inflight state.
  * failedToCommitOffsets are offsets that could not be committed in previous algorithm iteration
  * <p>
- * In scheduled periods, commit algorithm is run. It has three phases. First one is draining the queues and performing
+ * In scheduled periods, commit algorithm is commit. It has three phases. First one is draining the queues and performing
  * reductions:
  * * drain committedOffsets queue to collection - it needs to be done before draining inflights, so this collection
  * will not grow anymore, resulting in having inflights unmatched by commits; commits are incremented by 1 to match
@@ -61,17 +58,13 @@ import java.util.function.Function;
  * <p>
  * This algorithm is very simple, memory efficient, can be performed in single thread and introduces no locks.
  */
-public class OffsetCommitter implements Runnable {
+public class OffsetCommitter {
 
     private static final Logger logger = LoggerFactory.getLogger(OffsetCommitter.class);
 
-    private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-
-    private final int offsetCommitPeriodSeconds;
-
     private final OffsetQueue offsetQueue;
 
-    private final List<MessageCommitter> messageCommitters;
+    private final MessageCommitter messageCommitter;
 
     private final HermesMetrics metrics;
 
@@ -83,18 +76,15 @@ public class OffsetCommitter implements Runnable {
 
     public OffsetCommitter(
             OffsetQueue offsetQueue,
-            List<MessageCommitter> messageCommitters,
-            int offsetCommitPeriodSeconds,
+            MessageCommitter messageCommitter,
             HermesMetrics metrics
     ) {
         this.offsetQueue = offsetQueue;
-        this.messageCommitters = messageCommitters;
-        this.offsetCommitPeriodSeconds = offsetCommitPeriodSeconds;
+        this.messageCommitter = messageCommitter;
         this.metrics = metrics;
     }
 
-    @Override
-    public void run() {
+    public void commit() {
         try (Timer.Context c = metrics.timer("offset-committer.duration").time()) {
             // committed offsets need to be drained first so that there is no possibility of new committed offsets
             // showing up after inflight queue is drained - this would lead to stall in committing offsets
@@ -124,7 +114,7 @@ public class OffsetCommitter implements Runnable {
 
             cleanupUnusedSubscriptions();
         } catch (Exception exception) {
-            logger.error("Failed to run offset committer: {}", exception.getMessage(), exception);
+            logger.error("Failed to commit offset committer: {}", exception.getMessage(), exception);
         }
     }
 
@@ -158,12 +148,10 @@ public class OffsetCommitter implements Runnable {
     }
 
     private void commit(OffsetsToCommit offsetsToCommit) {
-        for (MessageCommitter committer : messageCommitters) {
-            FailedToCommitOffsets failedOffsets = committer.commitOffsets(offsetsToCommit);
+        FailedToCommitOffsets failedOffsets = messageCommitter.commitOffsets(offsetsToCommit);
 
-            if (failedOffsets.hasFailed()) {
-                failedToCommitOffsets.addAll(failedOffsets.failedOffsets());
-            }
+        if (failedOffsets.hasFailed()) {
+            failedToCommitOffsets.addAll(failedOffsets.failedOffsets());
         }
     }
 
@@ -181,16 +169,12 @@ public class OffsetCommitter implements Runnable {
         }
     }
 
-    public void start() {
-        scheduledExecutor.scheduleWithFixedDelay(this,
-                offsetCommitPeriodSeconds,
-                offsetCommitPeriodSeconds,
-                TimeUnit.SECONDS
-        );
+    public void offerInflightOffset(SubscriptionPartitionOffset subscriptionPartitionOffset) {
+        offsetQueue.offerInflightOffset(subscriptionPartitionOffset);
     }
 
-    public void shutdown() {
-        scheduledExecutor.shutdown();
+    public void offerCommittedOffset(SubscriptionPartitionOffset subscriptionPartitionOffset) {
+        offsetQueue.offerCommittedOffset(subscriptionPartitionOffset);
     }
 
     private static final class ReducingConsumer implements MessagePassingQueue.Consumer<SubscriptionPartitionOffset> {

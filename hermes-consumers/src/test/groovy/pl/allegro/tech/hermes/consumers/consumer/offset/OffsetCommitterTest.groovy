@@ -17,21 +17,21 @@ class OffsetCommitterTest extends Specification {
     private MockMessageCommitter messageCommitter = new MockMessageCommitter()
 
     private OffsetCommitter committer = new OffsetCommitter(
-            queue, [messageCommitter], 10, new HermesMetrics(new MetricRegistry(), new PathsCompiler("host"))
+            queue, [messageCommitter], new HermesMetrics(new MetricRegistry(), new PathsCompiler("host"))
     )
 
     def "should commit smallest offset of uncommitted message"() {
         given:
-        queue.offerInflightOffset(offset(1, 1))
-        queue.offerInflightOffset(offset(1, 2))
-        queue.offerInflightOffset(offset(1, 3))
-        queue.offerInflightOffset(offset(1, 4))
+        committer.offerInflightOffset(offset(1, 1))
+        committer.offerInflightOffset(offset(1, 2))
+        committer.offerInflightOffset(offset(1, 3))
+        committer.offerInflightOffset(offset(1, 4))
 
-        queue.offerCommittedOffset(offset(1, 1))
-        queue.offerCommittedOffset(offset(1, 4))
+        committer.offerCommittedOffset(offset(1, 1))
+        committer.offerCommittedOffset(offset(1, 4))
 
         when:
-        committer.run()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(1, offset(1, 2))
@@ -39,13 +39,13 @@ class OffsetCommitterTest extends Specification {
 
     def "should increment offset by 1 only if it comes from committed offsets to match Kafka offset definition"() {
         given:
-        queue.offerInflightOffset(offset(1, 1))
-        queue.offerCommittedOffset(offset(1, 1))
+        committer.offerInflightOffset(offset(1, 1))
+        committer.offerCommittedOffset(offset(1, 1))
 
         queue.offerInflightOffset(offset(2, 1))
 
         when:
-        committer.run()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(1, offset(1, 2), offset(2, 1))
@@ -53,14 +53,14 @@ class OffsetCommitterTest extends Specification {
 
     def "should commit max offset of committed offsets when no smaller inflights exist"() {
         given:
-        queue.offerInflightOffset(offset(1, 3))
-        queue.offerInflightOffset(offset(1, 4))
+        committer.offerInflightOffset(offset(1, 3))
+        committer.offerInflightOffset(offset(1, 4))
 
-        queue.offerCommittedOffset(offset(1, 3))
-        queue.offerCommittedOffset(offset(1, 4))
+        committer.offerCommittedOffset(offset(1, 3))
+        committer.offerCommittedOffset(offset(1, 4))
 
         when:
-        committer.run()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(1, offset(1, 5))
@@ -68,16 +68,16 @@ class OffsetCommitterTest extends Specification {
 
     def "should commit same offset twice when there are no new offsets to commit"() {
         given:
-        queue.offerInflightOffset(offset(1, 5))
+        committer.offerInflightOffset(offset(1, 5))
 
         when:
-        committer.run()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(1, offset(1, 5))
 
         when:
-        committer.run()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(2, offset(1, 5))
@@ -85,18 +85,18 @@ class OffsetCommitterTest extends Specification {
 
     def "should not mix offsets from different partitions and topics"() {
         given:
-        queue.offerInflightOffset(offset(1, 3))
-        queue.offerInflightOffset(offset(1, 4))
+        committer.offerInflightOffset(offset(1, 3))
+        committer.offerInflightOffset(offset(1, 4))
 
-        queue.offerInflightOffset(offset(2, 10))
-        queue.offerInflightOffset(offset(2, 11))
+        committer.offerInflightOffset(offset(2, 10))
+        committer.offerInflightOffset(offset(2, 11))
 
-        queue.offerCommittedOffset(offset(1, 3))
-        queue.offerCommittedOffset(offset(1, 4))
-        queue.offerCommittedOffset(offset(2, 11))
+        committer.offerCommittedOffset(offset(1, 3))
+        committer.offerCommittedOffset(offset(1, 4))
+        committer.offerCommittedOffset(offset(2, 11))
 
         when:
-        committer.run()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(1, offset(1, 5), offset(2, 10))
@@ -104,17 +104,17 @@ class OffsetCommitterTest extends Specification {
 
     def "should get rid of leftover inflight offset commits on second iteration when removing subscription"() {
         given:
-        queue.offerInflightOffset(offset(1, 3))
+        committer.offerInflightOffset(offset(1, 3))
 
         when:
         committer.removeUncommittedOffsets(SubscriptionName.fromString('group.topic$sub'))
-        committer.run()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(1, offset(1, 3))
 
         when:
-        committer.run()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(2)
@@ -122,8 +122,8 @@ class OffsetCommitterTest extends Specification {
 
     def "should retry committing offsets that failed to commit on first try in next iteration"() {
         given:
-        queue.offerInflightOffset(offset(1, 1))
-        queue.offerCommittedOffset(offset(1, 1))
+        committer.offerInflightOffset(offset(1, 1))
+        committer.offerCommittedOffset(offset(1, 1))
 
         FailedToCommitOffsets failedResult = new FailedToCommitOffsets()
         failedResult.add(offset(1, 2))
@@ -131,8 +131,8 @@ class OffsetCommitterTest extends Specification {
         messageCommitter.returnValue(failedResult)
 
         when:
-        committer.run()
-        committer.run()
+        committer.commit()
+        committer.commit()
 
         then:
         messageCommitter.wereCommitted(1, offset(1, 2))

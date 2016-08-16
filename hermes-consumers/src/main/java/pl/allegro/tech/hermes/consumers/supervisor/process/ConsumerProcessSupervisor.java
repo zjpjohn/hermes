@@ -10,8 +10,11 @@ import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.consumers.consumer.Consumer;
 import pl.allegro.tech.hermes.consumers.supervisor.ConsumersExecutorService;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.time.Clock;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Future;
 
 public class ConsumerProcessSupervisor implements Runnable {
@@ -31,6 +34,7 @@ public class ConsumerProcessSupervisor implements Runnable {
     private final HermesMetrics metrics;
 
     private long unhealthyAfter;
+    private int commitIntervalMs;
 
     public ConsumerProcessSupervisor(ConsumersExecutorService executor,
                                      Retransmitter retransmitter,
@@ -42,6 +46,7 @@ public class ConsumerProcessSupervisor implements Runnable {
         this.clock = clock;
         this.metrics = metrics;
         this.unhealthyAfter = configs.getIntProperty(Configs.CONSUMER_BACKGROUND_SUPERVISOR_UNHEALTHY_AFTER);
+        this.commitIntervalMs = configs.getIntProperty(Configs.CONSUMER_COMMIT_OFFSET_PERIOD);
     }
 
     public void accept(Signal signal) {
@@ -135,7 +140,7 @@ public class ConsumerProcessSupervisor implements Runnable {
 
         ConsumerProcess process;
         if (consumer.isPresent()) {
-            process = new ConsumerProcess(subscriptionName, consumer.get(), retransmitter, clock);
+            process = new ConsumerProcess(subscriptionName, consumer.get(), retransmitter, commitIntervalMs, clock);
         } else if (runningProcesses.hasProcess(subscriptionName)) {
             process = runningProcesses.getProcess(subscriptionName);
         } else {
@@ -156,5 +161,13 @@ public class ConsumerProcessSupervisor implements Runnable {
     public void shutdown() {
         runningProcesses.stream().forEach(p -> p.accept(Signal.of(Signal.SignalType.STOP, p.getSubscriptionName())));
         executor.shutdown();
+    }
+
+    public List<String> listRunningSubscriptions() {
+        return runningProcesses.listRunningSubscriptions();
+    }
+
+    public Integer countRunningSubscriptions() {
+        return runningProcesses.count();
     }
 }

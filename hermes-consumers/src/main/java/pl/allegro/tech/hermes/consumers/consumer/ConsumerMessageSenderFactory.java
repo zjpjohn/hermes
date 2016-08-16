@@ -6,7 +6,7 @@ import pl.allegro.tech.hermes.common.config.Configs;
 import pl.allegro.tech.hermes.common.message.undelivered.UndeliveredMessageLog;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.common.metric.executor.InstrumentedExecutorServiceFactory;
-import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetQueue;
+import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetCommitter;
 import pl.allegro.tech.hermes.consumers.consumer.rate.SerialConsumerRateLimiter;
 import pl.allegro.tech.hermes.consumers.consumer.rate.InflightsPool;
 import pl.allegro.tech.hermes.consumers.consumer.result.DefaultErrorHandler;
@@ -61,15 +61,15 @@ public class ConsumerMessageSenderFactory {
     }
 
     public ConsumerMessageSender create(Subscription subscription, SerialConsumerRateLimiter consumerRateLimiter,
-                                        OffsetQueue offsetQueue, InflightsPool inflight) {
+                                        OffsetCommitter committer, InflightsPool inflight) {
 
         List<SuccessHandler> successHandlers = Arrays.asList(
                 consumerAuthorizationHandler,
-                new DefaultSuccessHandler(offsetQueue, hermesMetrics, trackers));
+                new DefaultSuccessHandler(committer, hermesMetrics, trackers));
 
         List<ErrorHandler> errorHandlers = Arrays.asList(
                 consumerAuthorizationHandler,
-                new DefaultErrorHandler(offsetQueue, hermesMetrics, undeliveredMessageLog, clock, trackers,
+                new DefaultErrorHandler(committer, hermesMetrics, undeliveredMessageLog, clock, trackers,
                         configFactory.getStringProperty(KAFKA_CLUSTER_NAME)));
 
         return new ConsumerMessageSender(subscription,
